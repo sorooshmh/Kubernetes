@@ -1,0 +1,298 @@
+- name: Send TLS files to Master1
+  copy:
+     src: "{{item}}"
+     dest: /opt/ssl/
+  with_items:
+        - ca-config.json
+        - ca-csr.json
+        - kubernetes-csr.json
+  when:
+    - ansible_hostname == "master-1"
+  tags: [copy-tls-file]
+  
+- name: Use Fcssl to generate pem files
+  shell: "{{item}}"
+  with_items:
+        - cd /opt/ssl/ && /usr/local/bin/cfssl gencert -initca ca-csr.json | /usr/local/bin/cfssljson -bare ca
+        - cd /opt/ssl/ && /usr/local/bin/cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -hostname=192.168.50.9,192.168.50.10,192.168.50.11,192.168.50.12,127.0.0.1,kubernetes.default  -profile=kubernetes kubernetes-csr.json | /usr/local/bin/cfssljson -bare kubernetes
+        - cp -r /opt/ssl/*.pem /etc/etcd/
+  when:
+    - ansible_hostname == "master-1"
+  tags: [generate-tls]
+
+- name: Scp tls files to servers
+  shell: "{{item}}"
+  with_items:
+    - sshpass -p 'qazwsx' scp -oStrictHostKeyChecking=no /opt/ssl/*.pem root@192.168.50.11:/etc/etcd/
+    - sshpass -p 'qazwsx' scp -oStrictHostKeyChecking=no /opt/ssl/*.pem root@192.168.50.12:/etc/etcd/
+  when:
+    - ansible_hostname == "master-1"
+  tags: [Send-etcd-pem]
+
+
+- name: Create etcd service 
+  shell:
+    cmd: |
+        cat <<EOF >  /etc/systemd/system/etcd.service
+        [Unit]
+        Description=etcd
+        Documentation=https://github.com/coreos
+        [Service]
+        ExecStart=/usr/local/bin/etcd \
+          --name master-1 \
+          --cert-file=/etc/etcd/kubernetes.pem \
+          --key-file=/etc/etcd/kubernetes-key.pem \
+          --peer-cert-file=/etc/etcd/kubernetes.pem \
+          --peer-key-file=/etc/etcd/kubernetes-key.pem \
+          --trusted-ca-file=/etc/etcd/ca.pem \
+          --peer-trusted-ca-file=/etc/etcd/ca.pem \
+          --peer-client-cert-auth \
+          --client-cert-auth \
+          --initial-advertise-peer-urls https://192.168.50.10:2380 \
+          --listen-peer-urls https://192.168.50.10:2380 \
+          --listen-client-urls https://192.168.50.10:2379,http://127.0.0.1:2379 \
+          --advertise-client-urls https://192.168.50.10:2379 \
+          --initial-cluster-token etcd-cluster-0 \
+          --initial-cluster master-1=https://192.168.50.10:2380,master-2=https://192.168.50.11:2380,master-3=https://192.168.50.12:2380 \
+          --initial-cluster-state new \
+          --data-dir=/var/lib/etcd
+        Restart=on-failure
+        RestartSec=5
+        [Install]
+        WantedBy=multi-user.target        
+        EOF
+  when:
+    - ansible_hostname == "master-1"
+  tags: [create-etcd-service-master1]
+
+
+- name: Start and enable service
+  shell: systemctl daemon-reload && systemctl enable etcd && systemctl start etcd
+  when:
+    - ansible_hostname == "master-1"
+  tags: [start-etcd-master1]
+
+
+- name: Create etcd service Master2
+  shell: 
+    cmd: |
+        cat <<EOF >  /etc/systemd/system/etcd.service
+        [Unit]
+        Description=etcd
+        Documentation=https://github.com/coreos
+        [Service]
+        ExecStart=/usr/local/bin/etcd \
+          --name master-2 \
+          --cert-file=/etc/etcd/kubernetes.pem \
+          --key-file=/etc/etcd/kubernetes-key.pem \
+          --peer-cert-file=/etc/etcd/kubernetes.pem \
+          --peer-key-file=/etc/etcd/kubernetes-key.pem \
+          --trusted-ca-file=/etc/etcd/ca.pem \
+          --peer-trusted-ca-file=/etc/etcd/ca.pem \
+          --peer-client-cert-auth \
+          --client-cert-auth \
+          --initial-advertise-peer-urls https://192.168.50.11:2380 \
+          --listen-peer-urls https://192.168.50.11:2380 \
+          --listen-client-urls https://192.168.50.11:2379,http://127.0.0.1:2379 \
+          --advertise-client-urls https://192.168.50.11:2379 \
+          --initial-cluster-token etcd-cluster-0 \
+          --initial-cluster master-1=https://192.168.50.10:2380,master-2=https://192.168.50.11:2380,master-3=https://192.168.50.12:2380 \
+          --initial-cluster-state new \
+          --data-dir=/var/lib/etcd
+        Restart=on-failure
+        RestartSec=5
+        [Install]
+        WantedBy=multi-user.target
+        EOF
+  when:
+    - ansible_hostname == "master-2"
+  tags: [create-etcd-master2]
+
+
+- name: Start and enable service
+  shell: systemctl daemon-reload && systemctl enable etcd && systemctl start etcd
+  when:
+    - ansible_hostname == "master-2"
+  tags: [start-etcd-master2]
+
+
+- name: Create etcd service
+  shell: 
+     cmd: |
+        cat <<EOF >  /etc/systemd/system/etcd.service
+        [Unit]
+        Description=etcd
+        Documentation=https://github.com/coreos
+        [Service]
+        ExecStart=/usr/local/bin/etcd \
+          --name master-3 \
+          --cert-file=/etc/etcd/kubernetes.pem \
+          --key-file=/etc/etcd/kubernetes-key.pem \
+          --peer-cert-file=/etc/etcd/kubernetes.pem \
+          --peer-key-file=/etc/etcd/kubernetes-key.pem \
+          --trusted-ca-file=/etc/etcd/ca.pem \
+          --peer-trusted-ca-file=/etc/etcd/ca.pem \
+          --peer-client-cert-auth \
+          --client-cert-auth \
+          --initial-advertise-peer-urls https://192.168.50.12:2380 \
+          --listen-peer-urls https://192.168.50.12:2380 \
+          --listen-client-urls https://192.168.50.12:2379,http://127.0.0.1:2379 \
+          --advertise-client-urls https://192.168.50.12:2379 \
+          --initial-cluster-token etcd-cluster-0 \
+          --initial-cluster master-1=https://192.168.50.10:2380,master-2=https://192.168.50.11:2380,master-3=https://192.168.50.12:2380 \
+          --initial-cluster-state new \
+          --data-dir=/var/lib/etcd
+        Restart=on-failure
+        RestartSec=5
+        [Install]
+        WantedBy=multi-user.target
+        EOF
+  when:
+    - ansible_hostname == "master-3"
+  tags: [create-etcd-master3]
+
+
+- name: Start and enable service
+  shell: systemctl daemon-reload && systemctl enable etcd && systemctl start etcd
+  when:
+    - ansible_hostname == "master-3"
+  tags: [start-etcd-master3]
+
+
+##########################################################
+#
+#
+
+
+- name: Send initialize file to servers
+  copy:
+     src: config-master1.yaml 
+     dest: /root/
+  when:
+    - ansible_hostname == "master-1"
+  tags: [copy-initialize-file]
+
+- name: Send initialize file to servers
+  copy:
+     src: config-master2.yaml
+     dest: /root/
+  when:
+    - ansible_hostname == "master-2"
+  tags: [copy-initialize-file]
+
+- name: Send initialize file to servers
+  copy:
+     src: config-master3.yaml
+     dest: /root/
+  when:
+    - ansible_hostname == "master-3"
+  tags: [copy-initialize-file]
+
+
+
+- name: Initialize Master Node-1
+  shell: "{{item}}"
+  with_items:
+    - kubeadm config images pull
+    - kubeadm init --config=/root/config-master1.yaml --ignore-preflight-errors=all
+    - sshpass -p 'qazwsx' scp -r -oStrictHostKeyChecking=no /etc/kubernetes/pki root@192.168.50.11:/root
+    - sshpass -p 'qazwsx' scp -r -oStrictHostKeyChecking=no /etc/kubernetes/pki root@192.168.50.12:/root
+    - mkdir -p $HOME/.kube
+    - cp /etc/kubernetes/admin.conf $HOME/.kube/config
+    - chown $(id -u):$(id -g) $HOME/.kube/config
+    - docker pull docker.io/calico/cni:v3.22.0
+    - docker pull docker.io/calico/pod2daemon-flexvol:v3.22.0
+    - docker pull docker.io/calico/node:v3.22.0
+    - docker pull docker.io/calico/kube-controllers:v3.22.0
+    - kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml 
+  when:
+    - ansible_hostname == "master-1"
+  tags: [initialize-kubernetes-master1]
+
+- name: Send join Comannds to workers
+  shell: "{{item}}"
+  with_items:
+    - kubeadm token create --print-join-command  | grep kubeadm > /vagrant/join.sh
+    - sshpass -p 'qazwsx' scp -r -oStrictHostKeyChecking=no  /vagrant/join.sh root@192.168.50.13:/root
+    - sshpass -p 'qazwsx' scp -r -oStrictHostKeyChecking=no  /vagrant/join.sh root@192.168.50.14:/root
+    - sshpass -p 'qazwsx' scp -r -oStrictHostKeyChecking=no  /vagrant/join.sh root@192.168.50.15:/root
+  when:
+    - ansible_hostname == "master-1"
+  tags: [Send-join-command]
+
+
+- name: Initialize Master Node-2
+  shell: "{{item}}"
+  with_items:
+    - rm -f /root/pki/apiserver.*
+    - sudo mv /root/pki /etc/kubernetes/
+    - kubeadm config images pull
+    - sudo kubeadm init --config=/root/config-master2.yaml
+    - docker pull docker.io/calico/cni:v3.22.0
+    - docker pull docker.io/calico/pod2daemon-flexvol:v3.22.0
+    - docker pull docker.io/calico/node:v3.22.0
+  when:
+    - ansible_hostname == "master-2"
+  tags: [initialize-kubernetes-master2]
+
+- name: Initialize Master Node-3
+  shell: "{{item}}"
+  with_items:
+    - rm -f /root/pki/apiserver.*
+    - sudo mv /root/pki /etc/kubernetes/
+    - kubeadm config images pull
+    - sudo kubeadm init --config=/root/config-master3.yaml
+    - docker pull docker.io/calico/kube-controllers:v3.22.0
+    - docker pull docker.io/calico/cni:v3.22.0
+    - docker pull docker.io/calico/pod2daemon-flexvol:v3.22.0
+    - docker pull docker.io/calico/node:v3.22.0
+  when:
+    - ansible_hostname == "master-3"
+  tags: [initialize-kubernetes-master3]
+
+
+- name: Join Workers to cluster
+  shell: "{{item}}"
+  with_items:
+    - chmod +x /root/join.sh
+    - ./join.sh
+    - docker pull docker.io/calico/cni:v3.22.0
+    - docker pull docker.io/calico/pod2daemon-flexvol:v3.22.0
+    - docker.io/calico/node:v3.22.0
+
+  when:
+    - ansible_hostname == "worker-1"
+  tags: [Join-worker1-to-cluster]
+
+- name: Join Workers to cluster
+  shell: "{{item}}"
+  with_items:
+    - chmod +x /root/join.sh
+    - ./join.sh
+    - docker pull docker.io/calico/cni:v3.22.0
+    - docker pull docker.io/calico/pod2daemon-flexvol:v3.22.0
+    - docker.io/calico/node:v3.22.0
+  when:
+    - ansible_hostname == "worker-2"
+  tags: [Join-worker2-to-cluster]
+
+- name: Join Workers to cluster
+  shell: "{{item}}"
+  with_items:
+    - chmod +x /root/join.sh
+    - ./join.sh
+    - docker pull docker.io/calico/cni:v3.22.0
+    - docker pull docker.io/calico/pod2daemon-flexvol:v3.22.0
+    - docker.io/calico/node:v3.22.0
+  when:
+    - ansible_hostname == "worker-3"
+  tags: [Join-worker3-to-cluster]
+    
+
+
+
+
+
+
+
+

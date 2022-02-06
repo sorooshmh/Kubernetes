@@ -1,0 +1,19 @@
+apiVersion: kubeadm.k8s.io/v1beta2
+kind: ClusterConfiguration
+controlPlaneEndpoint: "192.168.50.9:6443"
+networking:
+  podSubnet: "10.244.0.0/16"
+etcd:
+    external:
+        endpoints:
+        - https://192.168.50.10:2379
+        - https://192.168.50.11:2379
+        - https://192.168.50.12:2379
+        caFile: /etc/etcd/ca.pem
+        certFile: /etc/etcd/kubernetes.pem
+        keyFile: /etc/etcd/kubernetes-key.pem
+---
+apiVersion: kubeadm.k8s.io/v1beta2
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: "192.168.50.10"

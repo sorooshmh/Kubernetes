@@ -1,0 +1,21 @@
+- name: Install haproxy
+  yum:
+    name: haproxy
+    state: present
+  tags: [Install-haproxy]
+
+- name: Create Haproxy.cfg
+  template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [Create-haproxy-file]
+
+- name: start haproxy service
+  service:
+    name: haproxy
+    state: started
+    enabled: yes
+  tags: [Start-haproxy]

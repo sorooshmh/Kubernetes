@@ -1,0 +1,93 @@
+- name: Install git
+  yum:
+    name: git
+    state: present
+  tags: [Install_git]
+
+
+- name: copying file with playbook
+  copy:
+    src: "{{item}}" 
+    dest: /root
+  with_items: 
+   - kubernetes-prometheus
+   - kubernetes-grafana
+   - kubernetes-node-exporter
+   - kube-state-metrics-configs
+  tags: [Copy_Yaml_Files]
+
+- name: Create Monitoring Namespace
+  shell: kubectl create namespace monitoring
+  tags: [Create_Prometheus_Namespace]
+
+
+- name: Create Cluster Role
+  shell: cd /root/kubernetes-prometheus && kubectl create -f clusterRole.yaml
+  tags: [Create_Prometheus_Role]
+
+
+- name: Create ConfigMap
+  shell: cd /root/kubernetes-prometheus && kubectl create -f config-map.yaml
+  tags: [Create_Prometheus_ConfigMap]
+
+- name: Create Prometheus Deployment
+  shell: cd /root/kubernetes-prometheus && kubectl create  -f prometheus-deployment.yaml
+  tags: [Create_Prometheus_CDeployment]
+
+
+- name: Create Prometheus  Service and Bind Port to outside 
+  shell: cd /root/kubernetes-prometheus && kubectl create -f prometheus-service.yaml --namespace=monitoring
+  tags: [Create_Prometheus_Service]
+
+
+
+##################################################################
+#
+# GRAFANA
+#
+
+- name: Create Grafana DataSource
+  shell: cd /root/kubernetes-grafana && kubectl create -f grafana-datasource-config.yaml 
+  tags: [Create_Grafana_Datasource]
+
+
+- name: Create Grafana Deploymenet
+  shell: cd /root/kubernetes-grafana && kubectl create -f deployment.yaml
+  tags: [Create_Grafana_Deployment]
+
+
+- name: Create Grafana  Service and Bind Port to outside
+  shell: cd /root/kubernetes-grafana && kubectl create -f service.yaml
+  tags: [Create_Grafana_Service]
+
+
+##################################################################
+#
+#  Node Exporter
+#
+
+- name: Create Node Exporter
+  shell: cd /root/kubernetes-node-exporter &&  kubectl create -f daemonset.yaml
+  tags: [Create_Node_exporter]
+
+- name: Create Grafana  Service and Bind Port to outside
+  shell: cd /root/kubernetes-node-exporter && kubectl create -f service.yaml
+  tags: [Create_Node_exporter_Service]
+
+
+##################################################################
+#
+#  Metrics
+#
+
+- name: Create state Metrics
+  shell: kubectl apply -f kube-state-metrics-configs/
+  tags: [Create_State_Metrics]
+
+
+
+
+
+
+
+

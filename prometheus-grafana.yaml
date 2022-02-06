@@ -1,0 +1,5 @@
+---
+ - hosts: kubernetes-servers
+   roles:
+    - prometheus-grafana
+
