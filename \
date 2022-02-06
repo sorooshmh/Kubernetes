@@ -1,8 +1,0 @@
-- name: Install git
-  yum:
-    name: git
-
-- name: Git install
-   git:
-    repo: 'https://foosball.example.org/path/to/repo.git'
-  tags: [clone-repository]
