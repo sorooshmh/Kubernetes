@@ -1,5 +1,6 @@
 ##Ingress Nginx
 
+
 First we should clone repository and config nginx ingress and after that we can create deployment and expose them to external environment. In addition we deploy a resource to connect to deployments.
 
     git clone https://github.com/nginxinc/kubernetes-ingress/
