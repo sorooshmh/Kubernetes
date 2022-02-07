@@ -1,4 +1,4 @@
-##Ingress Nginx
+## Ingress Nginx
 
 
 First we should clone repository and config nginx ingress and after that we can create deployment and expose them to external environment. In addition we deploy a resource to connect to deployments.
@@ -7,7 +7,7 @@ First we should clone repository and config nginx ingress and after that we can 
     cd kubernetes-ingress/deployments
 
 
-##Configure RBAC
+## Configure RBAC
 
 
     kubectl apply -f common/ns-and-sa.yaml
@@ -16,7 +16,7 @@ First we should clone repository and config nginx ingress and after that we can 
 
 
 
-##Create Common Resources
+## Create Common Resources
 
 
     kubectl apply -f common/default-server-secret.yaml
@@ -33,14 +33,14 @@ First we should clone repository and config nginx ingress and after that we can 
     kubectl apply -f common/crds/k8s.nginx.org_globalconfigurations.yaml
 
 
-##Deploy the Ingress Controller
+## Deploy the Ingress Controller
 
 
     kubectl apply -f daemon-set/nginx-ingress.yaml
 
 
 
-**Now we can deploy our pods:
+**Now we can deploy our pods:**
 
 
     cd /root/ingress
@@ -64,7 +64,7 @@ First we should clone repository and config nginx ingress and after that we can 
 
 
 
-**Set Frontend and backend in HAPROXY
+**Set Frontend and backend in HAPROXY**
 
 
 
