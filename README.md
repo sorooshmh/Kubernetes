@@ -19,10 +19,13 @@ Install vagrant on your system
 **Deploying Vagrant file to create machines**
   
  You should enter to vagrant directory and execute vagrantfile: 
+ 
   
    cd /vagrant
    
+   
    vagrant up
+   
    
 **The setup:**
 
