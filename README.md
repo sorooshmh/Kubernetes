@@ -29,7 +29,7 @@ Install vagrant on your system
    
 **The setup:**
 
-It contains a bunch of yml files which create structure of ansible provision and you can clone this and create a path in your ansible server and copy opennebula project in your provision directory in ansible server.All playbooks have their own path and being placed in tasks directories.
+It contains a bunch of yml files which create structure of ansible provision and you can clone this and create a path in your ansible server and copy project in your provision directory in ansible server.All playbooks have their own path and being placed in tasks directories.
 
 mkdir -p /home/ansible/provision
 
