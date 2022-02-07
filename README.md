@@ -21,6 +21,7 @@ Install vagrant on your system
  You should enter to vagrant directory and execute vagrantfile: 
   
    cd /vagrant
+   
    vagrant up
    
 **The setup:**
