@@ -2,7 +2,7 @@ apiVersion: kubeadm.k8s.io/v1beta2
 kind: ClusterConfiguration
 controlPlaneEndpoint: "192.168.50.9:6443"
 networking:
-  podSubnet: "10.244.0.0/16"
+  podSubnet: "10.30.0.0/24"
 etcd:
     external:
         endpoints:
@@ -12,6 +12,11 @@ etcd:
         caFile: /etc/etcd/ca.pem
         certFile: /etc/etcd/kubernetes.pem
         keyFile: /etc/etcd/kubernetes-key.pem
+apiServer:
+  certSANs:
+    - "192.168.50.9"
+  extraArgs:
+    apiserver-count: "3"
 ---
 apiVersion: kubeadm.k8s.io/v1beta2
 kind: InitConfiguration

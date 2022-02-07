@@ -32,7 +32,7 @@
 
 - name: Create Prometheus Deployment
   shell: cd /root/kubernetes-prometheus && kubectl create  -f prometheus-deployment.yaml
-  tags: [Create_Prometheus_CDeployment]
+  tags: [Create_Prometheus_Deployment]
 
 
 - name: Create Prometheus  Service and Bind Port to outside 
